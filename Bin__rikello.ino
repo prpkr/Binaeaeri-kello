@@ -1,16 +1,25 @@
-// Arduino Binary Clock with Millis
+// Arduino Binary Clock with Millis and Buttons
 
-// Code mostly from Mr. Lunk : https://www.hackster.io/peter-lunk/arduino-24h-binary-clock-with-seconds-17-leds-total-2c2374
+int ledPinsMin[] = {13, 12, 11, 10, 9, 8};   //minuutti ledit
+
+int ledPinsHr[] = {14, 15, 16, 17, 18};   // tunti ledit
+
+int statusLed = 7;            // status ledi
+int statusMode = LOW;
+
+int button1 = 2;              //nappi 1, jolla vaihdetaan statusta
+int buttonRead1 = HIGH;
+long button1time = 0;         // viimeinen napinpaino aika
+long debounce = 200;          // häiriö jutun odotusaika
+
+int button2= 3;               // nappi 2, ajan muuttamista varten
+int buttonRead2 = HIGH;
+long button2time = 0;         // viimeinen napinpaino aika
 
 
-int ledPinsMin[] = {2, 3, 4, 5, 6, 7};
-
-int ledPinsHr[] = {8, 9, 10, 11, 12};
-
-// Start time
 int countS = 0;   // Seconds
-int countM = 50;  // Minutes
-int countH = 14;  // Hours
+int countM = 30;  // Minutes
+int countH = 8;  // Hours
 
 byte countSec;
 byte countMin;
@@ -31,6 +40,10 @@ const long interval = 1000;
 
 void setup(void)
 {
+  pinMode(2, INPUT_PULLUP);       //Napit on pull_uppeina
+  pinMode(3, INPUT_PULLUP);
+  pinMode(statusLed, OUTPUT);
+  
   for (byte i = 0; i < nBitsMin; i++) {
     pinMode(ledPinsMin[i], OUTPUT);
   }
@@ -38,6 +51,7 @@ void setup(void)
   for (byte i = 0; i < nBitsHr; i++) {
     pinMode(ledPinsHr[i], OUTPUT);
   }
+  Serial.begin(9600);             //vianetsintää varten
 }
 
 // ----- Main Routine -------------------------------------------------
@@ -68,8 +82,15 @@ unsigned long currentMillis = millis();
   }
 }
 
-  dispBinaryMin(countM);
-  dispBinaryHr(countH);
+readButton1();  //katotaan nappi 1
+
+if(statusMode == HIGH) {   // jos ollaan konfiguraatiossa, katotaan nappi 2
+  readButton2();
+}
+
+dispBinaryMin(countM);
+dispBinaryHr(countH);
+
 }
 
 void dispBinaryMin(byte nMin)
@@ -86,4 +107,34 @@ void dispBinaryHr(byte nHr)
     digitalWrite(ledPinsHr[i], nHr & 1);
     nHr /= 2;
   }
-}}
+}
+
+void readButton1() {   // toggle buttonit on vaikeita!!!
+  
+if(digitalRead(button1) != buttonRead1 && millis() - button1time > debounce) {
+  
+  statusMode = !statusMode;
+  digitalWrite(statusLed, statusMode);
+  button1time = millis();
+  }
+}
+
+void readButton2() {   // toggle buttonit on vaikeita!!!
+  
+if(digitalRead(button2) != buttonRead2 && millis() - button2time > debounce) {
+  
+  countM = (countM + 1);
+    if (countM > 59)
+    {
+      countM = 0;
+      countH = (countH + 1);
+      if (countH > 23)
+      {
+        countH = 0;
+        countM = 0;
+        countS = 0;
+        }
+      }
+  button2time = millis();
+  }
+}
